@@ -5,7 +5,8 @@ import { useParams, Link, useNavigate } from 'react-router-dom'; // useParams to
 import TaskForm from '../Tasks/TaskForm'; // Will create this soon
 // import TaskList from '../Tasks/TaskList'; // Can use a dedicated TaskList component if desired
 
-const API_BASE_URL = 'http://localhost:5000/api';
+//const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const ProjectDetails = () => {
     const { id: projectId } = useParams(); // Get project ID from URL parameter

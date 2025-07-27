@@ -3,7 +3,8 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
-const API_BASE_URL = 'http://localhost:5000/api';
+//const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const Login = ({ onLoginSuccess }) => { // onLoginSuccess prop from App.jsx
     const [email, setEmail] = useState('');
