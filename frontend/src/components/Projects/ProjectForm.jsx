@@ -1,9 +1,9 @@
 // frontend/src/components/Projects/ProjectForm.jsx
 import React, { useState } from 'react';
 import axios from 'axios';
-import { useNavigate, Link } from 'react-router-dom'; // Make sure Link is imported
+import { useNavigate, Link } from 'react-router-dom';
 
-//const API_BASE_URL = 'http://localhost:5000/api';
+// Base URL for your backend API
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const ProjectForm = () => {
@@ -34,17 +34,17 @@ const ProjectForm = () => {
                 return;
             }
 
-            await axios.post(`${API_BASE_URL}/projects`, {
+            // CRITICAL FIX: The API call now correctly includes the '/api' prefix.
+            await axios.post(`${API_BASE_URL}/api/projects`, {
                 name,
                 description,
-                endDate: endDate || undefined, // Send undefined if empty
+                endDate: endDate || undefined,
             }, {
                 headers: {
                     Authorization: `Bearer ${token}`
                 }
             });
             setMessage('Project created successfully!');
-            // Redirect to project list after successful creation
             navigate('/projects');
         } catch (err) {
             console.error('Project creation error:', err);

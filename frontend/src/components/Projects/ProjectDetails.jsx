@@ -1,23 +1,19 @@
 // frontend/src/components/Projects/ProjectDetails.jsx
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useParams, Link, useNavigate } from 'react-router-dom'; // useParams to get project ID from URL
-import TaskForm from '../Tasks/TaskForm'; // Will create this soon
-// import TaskList from '../Tasks/TaskList'; // Can use a dedicated TaskList component if desired
+import { useParams, Link, useNavigate } from 'react-router-dom';
 
-//const API_BASE_URL = 'http://localhost:5000/api';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const ProjectDetails = () => {
-    const { id: projectId } = useParams(); // Get project ID from URL parameter
+    const { id: projectId } = useParams();
     const [project, setProject] = useState(null);
     const [tasks, setTasks] = useState([]);
-    const [users, setUsers] = useState([]); // To populate assignee dropdown
+    const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const navigate = useNavigate();
 
-    // Fetch project details and its tasks
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -31,25 +27,22 @@ const ProjectDetails = () => {
                 }
 
                 // Fetch Project Details
-                const projectResponse = await axios.get(`${API_BASE_URL}/projects/${projectId}`, {
+                const projectResponse = await axios.get(`${API_BASE_URL}/api/projects/${projectId}`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 setProject(projectResponse.data);
 
                 // Fetch Tasks for this project
-                const tasksResponse = await axios.get(`${API_BASE_URL}/tasks/projects/${projectId}/tasks`, {
+                const tasksResponse = await axios.get(`${API_BASE_URL}/api/tasks/projects/${projectId}/tasks`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 setTasks(tasksResponse.data);
 
                 // Fetch all users to populate assignee dropdown in TaskForm
-                // This route (GET /api/users) needs to be implemented on backend later for Admin only
-                // For now, we'll fetch them (or simplify assignee selection)
-                const usersResponse = await axios.get(`${API_BASE_URL}/users`, { // This route needs backend implementation for Admin users
+                const usersResponse = await axios.get(`${API_BASE_URL}/api/users`, {
                      headers: { Authorization: `Bearer ${token}` }
                 });
                 setUsers(usersResponse.data);
-
 
             } catch (err) {
                 console.error('Error fetching project details or tasks:', err);
@@ -60,23 +53,20 @@ const ProjectDetails = () => {
         };
 
         fetchData();
-    }, [projectId]); // Re-fetch if projectId changes
+    }, [projectId]);
 
     const handleTaskCreated = async (newTask) => {
-        // Add new task to the list and potentially update UI for assignee name
-        // To update assignee name: find user in `users` state
         const assignedUser = users.find(u => u._id === newTask.assignee);
         if (assignedUser) {
             newTask.assignee = { _id: assignedUser._id, name: assignedUser.name, email: assignedUser.email };
         }
-        setTasks(prevTasks => [newTask, ...prevTasks]); // Add new task to the top
-        // You could also re-fetch all tasks: fetchData();
+        setTasks(prevTasks => [newTask, ...prevTasks]);
     };
 
     const handleTaskUpdateStatus = async (taskId, newStatus) => {
         try {
             const token = localStorage.getItem('token');
-            const response = await axios.put(`${API_BASE_URL}/tasks/${taskId}`, { status: newStatus }, {
+            const response = await axios.put(`${API_BASE_URL}/api/tasks/${taskId}`, { status: newStatus }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setTasks(prevTasks =>
@@ -92,18 +82,16 @@ const ProjectDetails = () => {
         if (window.confirm('Are you sure you want to delete this task?')) {
             try {
                 const token = localStorage.getItem('token');
-                await axios.delete(`${API_BASE_URL}/tasks/${taskId}`, {
+                await axios.delete(`${API_BASE_URL}/api/tasks/${taskId}`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 setTasks(prevTasks => prevTasks.filter(task => task._id !== taskId));
-                // setMessage('Task deleted successfully!'); // You might want a transient message
             } catch (err) {
                 console.error('Error deleting task:', err);
                 setError(err.response?.data?.message || 'Failed to delete task.');
             }
         }
     };
-
 
     if (loading) {
         return <div style={styles.message}>Loading project details...</div>;
@@ -262,7 +250,7 @@ const styles = {
     },
     taskListContainer: {
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', // Responsive columns
+        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
         gap: '20px',
         marginTop: '20px',
     },
@@ -271,7 +259,7 @@ const styles = {
         padding: '15px',
         borderRadius: '8px',
         boxShadow: '0 1px 5px rgba(0,0,0,0.05)',
-        minHeight: '200px', // Ensure columns have some height
+        minHeight: '200px',
     },
     columnHeader: {
         textAlign: 'center',

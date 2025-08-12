@@ -1,9 +1,8 @@
 // frontend/src/components/Projects/ProjectList.jsx
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Link } from 'react-router-dom'; // For linking to project details (will add later)
+import { Link } from 'react-router-dom';
 
-//const API_BASE_URL = 'http://localhost:5000/api';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const ProjectList = () => {
@@ -23,7 +22,8 @@ const ProjectList = () => {
                     return;
                 }
 
-                const response = await axios.get(`${API_BASE_URL}/projects`, {
+                // CRITICAL FIX: The API call now correctly includes the '/api' prefix.
+                const response = await axios.get(`${API_BASE_URL}/api/projects`, {
                     headers: {
                         Authorization: `Bearer ${token}`
                     }
@@ -38,7 +38,7 @@ const ProjectList = () => {
         };
 
         fetchProjects();
-    }, []); // Empty dependency array means this runs once on component mount
+    }, []);
 
     if (loading) {
         return <div style={styles.message}>Loading projects...</div>;
@@ -67,7 +67,6 @@ const ProjectList = () => {
                                 Start: {new Date(project.startDate).toLocaleDateString()} |
                                 End: {project.endDate ? new Date(project.endDate).toLocaleDateString() : 'N/A'}
                             </p>
-                            {/* We'll add a link to ProjectDetails here later */}
                             <Link to={`/projects/${project._id}`} style={styles.viewDetailsButton}>View Details</Link>
                         </li>
                     ))}
@@ -104,7 +103,7 @@ const styles = {
         transition: 'background-color 0.3s ease',
         cursor: 'pointer',
     },
-    createButtonHover: { // For :hover pseudo-class, needs to be applied manually or using a library
+    createButtonHover: {
         backgroundColor: '#218838',
     },
     message: {
@@ -130,7 +129,7 @@ const styles = {
         marginBottom: '10px',
         transition: 'box-shadow 0.2s ease',
     },
-    listItemHover: { // For :hover pseudo-class
+    listItemHover: {
         boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
     },
     projectHeader: {
@@ -171,7 +170,7 @@ const styles = {
         fontSize: '14px',
         transition: 'background-color 0.3s ease',
     },
-    viewDetailsButtonHover: { // For :hover pseudo-class
+    viewDetailsButtonHover: {
         backgroundColor: '#0056b3',
     }
 };

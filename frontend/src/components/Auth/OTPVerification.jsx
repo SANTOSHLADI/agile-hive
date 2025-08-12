@@ -1,9 +1,9 @@
 // frontend/src/components/Auth/OTPVerification.jsx
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom'; // For redirection
+import { useNavigate } from 'react-router-dom';
 
-//const API_BASE_URL = 'http://localhost:5000/api';
+// Base URL for your backend API
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const OTPVerification = ({ email, password, onVerificationSuccess }) => {
@@ -11,9 +11,9 @@ const OTPVerification = ({ email, password, onVerificationSuccess }) => {
     const [message, setMessage] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const [resendTimer, setResendTimer] = useState(60); // 60 seconds countdown
+    const [resendTimer, setResendTimer] = useState(60);
     const [canResend, setCanResend] = useState(false);
-    const navigate = useNavigate(); // Hook for navigation
+    const navigate = useNavigate();
 
     useEffect(() => {
         let timer;
@@ -24,7 +24,7 @@ const OTPVerification = ({ email, password, onVerificationSuccess }) => {
         } else {
             setCanResend(true);
         }
-        return () => clearTimeout(timer); // Cleanup timer
+        return () => clearTimeout(timer);
     }, [resendTimer]);
 
     const handleVerify = async (e) => {
@@ -34,17 +34,16 @@ const OTPVerification = ({ email, password, onVerificationSuccess }) => {
         setLoading(true);
 
         try {
-            const response = await axios.post(`${API_BASE_URL}/auth/verify-otp`, {
+            // CRITICAL FIX: Added '/api' prefix to the URL
+            const response = await axios.post(`${API_BASE_URL}/api/auth/verify-otp`, {
                 email,
                 otp,
-                password, // Pass password to the backend for user creation
+                password,
             });
             setMessage(response.data.message);
-            // Store JWT token
             localStorage.setItem('token', response.data.token);
-            // Call parent success handler, typically redirects to dashboard
             onVerificationSuccess();
-            navigate('/dashboard'); // Redirect to dashboard or login
+            navigate('/dashboard');
         } catch (err) {
             console.error('OTP verification error:', err);
             setError(err.response?.data?.message || 'OTP verification failed. Please try again.');
@@ -58,10 +57,11 @@ const OTPVerification = ({ email, password, onVerificationSuccess }) => {
         setMessage('');
         setLoading(true);
         try {
-            await axios.post(`${API_BASE_URL}/auth/register-otp-request`, { email, password });
+            // CRITICAL FIX: Added '/api' prefix to the URL
+            await axios.post(`${API_BASE_URL}/api/auth/register-otp-request`, { email, password });
             setMessage('New OTP sent to your email.');
-            setResendTimer(60); // Reset timer
-            setCanResend(false); // Disable resend
+            setResendTimer(60);
+            setCanResend(false);
         } catch (err) {
             console.error('Resend OTP error:', err);
             setError(err.response?.data?.message || 'Failed to resend OTP.');

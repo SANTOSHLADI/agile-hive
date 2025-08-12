@@ -3,10 +3,10 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
-//const API_BASE_URL = 'http://localhost:5000/api';
+// Base URL for your backend API
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-const Login = ({ onLoginSuccess }) => { // onLoginSuccess prop from App.jsx
+const Login = ({ onLoginSuccess }) => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [message, setMessage] = useState('');
@@ -21,7 +21,8 @@ const Login = ({ onLoginSuccess }) => { // onLoginSuccess prop from App.jsx
         setLoading(true);
 
         try {
-            const response = await axios.post(`${API_BASE_URL}/auth/login`, {
+            // CRITICAL FIX: The API call now correctly includes the '/api' prefix.
+            const response = await axios.post(`${API_BASE_URL}/api/auth/login`, {
                 email,
                 password,
             });
@@ -29,8 +30,8 @@ const Login = ({ onLoginSuccess }) => { // onLoginSuccess prop from App.jsx
             // Store JWT token
             localStorage.setItem('token', response.data.token);
             // Call parent function for global state update/redirection
-            onLoginSuccess(response.data.user); // Pass user data up
-            navigate('/dashboard'); // Redirect to dashboard
+            onLoginSuccess(response.data.user);
+            navigate('/dashboard');
         } catch (err) {
             console.error('Login error:', err);
             setError(err.response?.data?.message || 'Login failed. Please check your credentials.');

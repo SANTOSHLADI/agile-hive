@@ -1,20 +1,19 @@
 // frontend/src/components/Auth/Signup.jsx
 import React, { useState } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom'; // Make sure this import is present
+import { useNavigate } from 'react-router-dom';
 
 // Base URL for your backend API
-//const API_BASE_URL = 'http://localhost:5000/api';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-const Signup = ({ onOtpSent }) => { // onOtpSent is a prop passed from App.jsx
+const Signup = ({ onOtpSent }) => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [message, setMessage] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const navigate = useNavigate(); // Hook for navigation
+    const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -32,14 +31,14 @@ const Signup = ({ onOtpSent }) => { // onOtpSent is a prop passed from App.jsx
 
         setLoading(true);
         try {
-            const response = await axios.post(`${API_BASE_URL}/auth/register-otp-request`, {
+            // CRITICAL FIX: The API call now correctly includes the '/api' prefix.
+            const response = await axios.post(`${API_BASE_URL}/api/auth/register-otp-request`, {
                 email,
                 password,
             });
             setMessage(response.data.message);
-            // If OTP is sent successfully, call the parent function to change view
-            onOtpSent(email, password); // Pass email and password to parent for OTP verification step
-            navigate('/verify-otp'); // <--- ADDED THIS LINE: Redirect to OTP verification page
+            onOtpSent(email, password);
+            navigate('/verify-otp');
         } catch (err) {
             console.error('Signup error:', err);
             setError(err.response?.data?.message || 'Failed to send OTP. Please try again.');
