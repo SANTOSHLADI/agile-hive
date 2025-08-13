@@ -15,10 +15,12 @@ const generateToken = (id, role) => {
 // --- Nodemailer Transporter Setup ---
 // You'll need to configure this with your email service provider credentials
 const transporter = nodemailer.createTransport({
-    service: 'gmail', // Example: 'gmail' or 'outlook' or your SMTP host
+    host: 'smtp.gmail.com', // Use the host for Gmail's SMTP server
+    port: 465, // Use port 465 for a secure SSL connection
+    secure: true, // Use SSL
     auth: {
-        user: process.env.EMAIL_USER, // Your email address from .env
-        pass: process.env.EMAIL_PASS // Your email password/app password from .env
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
     }
 });
 
