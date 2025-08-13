@@ -312,4 +312,4 @@ const styles = {
     }
 };
 
-export default ProjectDetails;
+export default ProjectDetails; 
