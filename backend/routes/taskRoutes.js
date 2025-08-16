@@ -1,25 +1,27 @@
-// backend/routes/taskRoutes.js
 const express = require('express');
 const {
     createTask,
-    getTasksByProject, // Get all tasks for a specific project
+    getTasksByProject,
     getTaskById,
     updateTask,
-    deleteTask
+    deleteTask,
+    upload
 } = require('../controllers/taskController');
 const { authenticateToken, authorizeRoles } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
-// Routes for tasks
-// Protecting all task routes with authentication
-// Creating a task requires manager/admin role (or custom logic if any member can create)
-router.post('/projects/:projectId/tasks', authenticateToken, authorizeRoles(['project_manager', 'admin', 'user']), createTask); // Allow users to create tasks too
-router.get('/projects/:projectId/tasks', authenticateToken, getTasksByProject); // Get tasks for a specific project
-
-router.route('/:id') // For operations on a specific task ID
+router.post(
+    '/projects/:projectId/tasks',
+    authenticateToken,
+    authorizeRoles(['project_manager', 'admin', 'user']),
+    upload.array('documents', 3),
+    createTask
+);
+router.get('/projects/:projectId/tasks', authenticateToken, getTasksByProject);
+router.route('/:id')
     .get(authenticateToken, getTaskById)
-    .put(authenticateToken, updateTask) // All authenticated users can update their assigned tasks
-    .delete(authenticateToken, authorizeRoles(['project_manager', 'admin']), deleteTask); // Only manager/admin can delete tasks
+    .put(authenticateToken, updateTask)
+    .delete(authenticateToken, authorizeRoles(['project_manager', 'admin']), deleteTask);
 
 module.exports = router;

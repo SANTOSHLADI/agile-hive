@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 
+// Base URL for your backend API
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const TaskForm = ({ projectId, onTaskCreated, users }) => {
@@ -10,7 +11,8 @@ const TaskForm = ({ projectId, onTaskCreated, users }) => {
     const [status, setStatus] = useState('to-do');
     const [priority, setPriority] = useState('medium');
     const [dueDate, setDueDate] = useState('');
-    const [assignee, setAssignee] = useState(''); // Stores user ID
+    const [assignee, setAssignee] = useState('');
+    const [documents, setDocuments] = useState([]); // Store selected files
     const [message, setMessage] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -34,18 +36,30 @@ const TaskForm = ({ projectId, onTaskCreated, users }) => {
                 return;
             }
 
-            const response = await axios.post(`${API_BASE_URL}/api/tasks/projects/${projectId}/tasks`, {
-                title,
-                description,
-                status,
-                priority,
-                dueDate: dueDate || undefined, // Send undefined if empty
-                assignee: assignee || undefined, // Send undefined if empty
-            }, {
-                headers: {
-                    Authorization: `Bearer ${token}`
+            const formData = new FormData();
+            formData.append('title', title);
+            formData.append('description', description);
+            formData.append('status', status);
+            formData.append('priority', priority);
+            if (dueDate) formData.append('dueDate', dueDate);
+            if (assignee) formData.append('assignee', assignee);
+
+            // Attach documents
+            for (let i = 0; i < documents.length; i++) {
+                formData.append('documents', documents[i]);
+            }
+
+            const response = await axios.post(
+                `${API_BASE_URL}/api/tasks/projects/${projectId}/tasks`,
+                formData,
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        'Content-Type': 'multipart/form-data'
+                    }
                 }
-            });
+            );
+
             setMessage('Task created successfully!');
             setTitle('');
             setDescription('');
@@ -53,7 +67,8 @@ const TaskForm = ({ projectId, onTaskCreated, users }) => {
             setPriority('medium');
             setDueDate('');
             setAssignee('');
-            onTaskCreated(response.data); // Notify parent (ProjectDetails) about new task
+            setDocuments([]);
+            onTaskCreated(response.data);
         } catch (err) {
             console.error('Task creation error:', err);
             setError(err.response?.data?.message || 'Failed to create task.');
@@ -75,6 +90,7 @@ const TaskForm = ({ projectId, onTaskCreated, users }) => {
                     required
                     style={styles.input}
                 />
+
                 <label style={styles.label}>Description:</label>
                 <textarea
                     placeholder="Detailed task description"
@@ -82,18 +98,21 @@ const TaskForm = ({ projectId, onTaskCreated, users }) => {
                     onChange={(e) => setDescription(e.target.value)}
                     style={styles.textarea}
                 ></textarea>
+
                 <label style={styles.label}>Status:</label>
                 <select value={status} onChange={(e) => setStatus(e.target.value)} style={styles.select}>
                     <option value="to-do">To Do</option>
                     <option value="in-progress">In Progress</option>
                     <option value="done">Done</option>
                 </select>
+
                 <label style={styles.label}>Priority:</label>
                 <select value={priority} onChange={(e) => setPriority(e.target.value)} style={styles.select}>
                     <option value="low">Low</option>
                     <option value="medium">Medium</option>
                     <option value="high">High</option>
                 </select>
+
                 <label style={styles.label}>Due Date:</label>
                 <input
                     type="date"
@@ -101,13 +120,25 @@ const TaskForm = ({ projectId, onTaskCreated, users }) => {
                     onChange={(e) => setDueDate(e.target.value)}
                     style={styles.input}
                 />
+
                 <label style={styles.label}>Assignee:</label>
                 <select value={assignee} onChange={(e) => setAssignee(e.target.value)} style={styles.select}>
                     <option value="">Unassigned</option>
                     {users.map(user => (
-                        <option key={user._id} value={user._id}>{user.name || user.email}</option>
+                        <option key={user._id} value={user._id}>
+                            {user.name || user.email}
+                        </option>
                     ))}
                 </select>
+
+                <label style={styles.label}>Documents (PDF only, max 3):</label>
+                <input
+                    type="file"
+                    multiple
+                    accept=".pdf"
+                    onChange={(e) => setDocuments(e.target.files)}
+                    style={styles.input}
+                />
 
                 <button type="submit" disabled={loading} style={styles.button}>
                     {loading ? 'Adding...' : 'Add Task'}
@@ -176,9 +207,6 @@ const styles = {
         fontSize: '16px',
         marginTop: '10px',
         transition: 'background-color 0.3s ease',
-    },
-    buttonHover: {
-        backgroundColor: '#0056b3',
     },
     successMessage: {
         color: 'green',

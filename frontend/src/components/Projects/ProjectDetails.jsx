@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import TaskForm from '../Tasks/TaskForm';
+import { PieChart, Pie, Cell, Tooltip, Legend } from 'recharts';
 
 const API_BASE_URL = 'https://agile-hive-backend.onrender.com';
 
@@ -11,9 +12,16 @@ const ProjectDetails = () => {
     const [project, setProject] = useState(null);
     const [tasks, setTasks] = useState([]);
     const [users, setUsers] = useState([]);
+    const [taskStats, setTaskStats] = useState([]); // Stats from backend
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const navigate = useNavigate();
+
+    const COLORS = {
+        'to-do': '#FF8042',
+        'in-progress': '#FFBB28',
+        'done': '#00C49F'
+    };
 
     useEffect(() => {
         const fetchData = async () => {
@@ -33,17 +41,23 @@ const ProjectDetails = () => {
                 });
                 setProject(projectResponse.data);
 
-                // Fetch Tasks for this project
+                // Fetch Tasks
                 const tasksResponse = await axios.get(`${API_BASE_URL}/api/tasks/projects/${projectId}/tasks`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 setTasks(tasksResponse.data);
 
-                // Fetch all users to populate assignee dropdown in TaskForm
+                // Fetch Users
                 const usersResponse = await axios.get(`${API_BASE_URL}/api/users`, {
-                     headers: { Authorization: `Bearer ${token}` }
+                    headers: { Authorization: `Bearer ${token}` }
                 });
                 setUsers(usersResponse.data);
+
+                // Fetch Task Statistics
+                const statsResponse = await axios.get(`${API_BASE_URL}/api/tasks/projects/${projectId}/stats`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                setTaskStats(statsResponse.data);
 
             } catch (err) {
                 console.error('Error fetching project details or tasks:', err);
@@ -112,17 +126,44 @@ const ProjectDetails = () => {
             <h2 style={styles.header}>{project.name}</h2>
             <p style={styles.description}>{project.description}</p>
             <p style={styles.dates}>
-                **Start Date:** {new Date(project.startDate).toLocaleDateString()} |
-                **End Date:** {project.endDate ? new Date(project.endDate).toLocaleDateString() : 'N/A'}
+                <strong>Start Date:</strong> {new Date(project.startDate).toLocaleDateString()} |
+                <strong> End Date:</strong> {project.endDate ? new Date(project.endDate).toLocaleDateString() : 'N/A'}
             </p>
-            <p style={styles.manager}>**Manager:** {project.manager?.name || project.manager?.email || 'N/A'}</p>
+            <p style={styles.manager}><strong>Manager:</strong> {project.manager?.name || project.manager?.email || 'N/A'}</p>
             <p style={styles.members}>
-                **Members:** {project.members && project.members.length > 0
+                <strong>Members:</strong> {project.members && project.members.length > 0
                     ? project.members.map(member => member.name || member.email).join(', ')
                     : 'No members assigned'}
             </p>
 
             <hr style={styles.separator} />
+
+            {/* Task Statistics Pie Chart */}
+            {taskStats.length > 0 && (
+                <>
+                    <h3 style={styles.subHeader}>Task Status Overview</h3>
+                    <div style={{ display: 'flex', justifyContent: 'center' }}>
+                        <PieChart width={400} height={200}>
+                            <Pie
+                                data={taskStats}
+                                dataKey="count"
+                                nameKey="_id"
+                                cx="50%"
+                                cy="50%"
+                                outerRadius={60}
+                                fill="#8884d8"
+                                label
+                            >
+                                {taskStats.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={COLORS[entry._id]} />
+                                ))}
+                            </Pie>
+                            <Tooltip />
+                            <Legend />
+                        </PieChart>
+                    </div>
+                </>
+            )}
 
             <h3 style={styles.subHeader}>Tasks</h3>
             <TaskForm projectId={projectId} onTaskCreated={handleTaskCreated} users={users} />
@@ -131,7 +172,7 @@ const ProjectDetails = () => {
                 <p style={styles.message}>No tasks for this project yet. Add one above!</p>
             ) : (
                 <div style={styles.taskListContainer}>
-                    {/* Simple Kanban Board Layout */}
+                    {/* Kanban Columns */}
                     <div style={styles.kanbanColumn}>
                         <h4 style={styles.columnHeader}>To Do</h4>
                         {tasks.filter(task => task.status === 'to-do').map(task => (
@@ -141,9 +182,9 @@ const ProjectDetails = () => {
                                 <p style={styles.taskPriority}>Priority: {task.priority}</p>
                                 <p style={styles.taskDueDate}>Due: {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'N/A'}</p>
                                 <div style={styles.taskActions}>
-                                    <button onClick={() => handleTaskUpdateStatus(task._id, 'in-progress')} style={{...styles.actionButton, backgroundColor: '#ffc107'}}>Start</button>
-                                    <button onClick={() => handleTaskUpdateStatus(task._id, 'done')} style={{...styles.actionButton, backgroundColor: '#28a745'}}>Complete</button>
-                                    <button onClick={() => handleTaskDelete(task._id)} style={{...styles.actionButton, backgroundColor: '#dc3545'}}>Delete</button>
+                                    <button onClick={() => handleTaskUpdateStatus(task._id, 'in-progress')} style={{ ...styles.actionButton, backgroundColor: '#ffc107' }}>Start</button>
+                                    <button onClick={() => handleTaskUpdateStatus(task._id, 'done')} style={{ ...styles.actionButton, backgroundColor: '#28a745' }}>Complete</button>
+                                    <button onClick={() => handleTaskDelete(task._id)} style={{ ...styles.actionButton, backgroundColor: '#dc3545' }}>Delete</button>
                                 </div>
                             </div>
                         ))}
@@ -158,9 +199,9 @@ const ProjectDetails = () => {
                                 <p style={styles.taskPriority}>Priority: {task.priority}</p>
                                 <p style={styles.taskDueDate}>Due: {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'N/A'}</p>
                                 <div style={styles.taskActions}>
-                                    <button onClick={() => handleTaskUpdateStatus(task._id, 'done')} style={{...styles.actionButton, backgroundColor: '#28a745'}}>Complete</button>
-                                    <button onClick={() => handleTaskUpdateStatus(task._id, 'to-do')} style={{...styles.actionButton, backgroundColor: '#6c757d'}}>Revert</button>
-                                    <button onClick={() => handleTaskDelete(task._id)} style={{...styles.actionButton, backgroundColor: '#dc3545'}}>Delete</button>
+                                    <button onClick={() => handleTaskUpdateStatus(task._id, 'done')} style={{ ...styles.actionButton, backgroundColor: '#28a745' }}>Complete</button>
+                                    <button onClick={() => handleTaskUpdateStatus(task._id, 'to-do')} style={{ ...styles.actionButton, backgroundColor: '#6c757d' }}>Revert</button>
+                                    <button onClick={() => handleTaskDelete(task._id)} style={{ ...styles.actionButton, backgroundColor: '#dc3545' }}>Delete</button>
                                 </div>
                             </div>
                         ))}
@@ -175,8 +216,8 @@ const ProjectDetails = () => {
                                 <p style={styles.taskPriority}>Priority: {task.priority}</p>
                                 <p style={styles.taskDueDate}>Due: {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'N/A'}</p>
                                 <div style={styles.taskActions}>
-                                    <button onClick={() => handleTaskUpdateStatus(task._id, 'to-do')} style={{...styles.actionButton, backgroundColor: '#6c757d'}}>Reopen</button>
-                                    <button onClick={() => handleTaskDelete(task._id)} style={{...styles.actionButton, backgroundColor: '#dc3545'}}>Delete</button>
+                                    <button onClick={() => handleTaskUpdateStatus(task._id, 'to-do')} style={{ ...styles.actionButton, backgroundColor: '#6c757d' }}>Reopen</button>
+                                    <button onClick={() => handleTaskDelete(task._id)} style={{ ...styles.actionButton, backgroundColor: '#dc3545' }}>Delete</button>
                                 </div>
                             </div>
                         ))}
@@ -313,4 +354,4 @@ const styles = {
     }
 };
 
-export default ProjectDetails; 
+export default ProjectDetails;

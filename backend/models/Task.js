@@ -37,6 +37,27 @@ const taskSchema = new mongoose.Schema({
         ref: 'User', // Refers to the 'User' model
         required: false // Task can be unassigned initially
     },
+    // Attachments (array of uploaded files)
+    attachments: [
+        {
+            fileName: {
+                type: String,
+                required: true
+            },
+            filePath: {
+                type: String,
+                required: true
+            },
+            fileType: {
+                type: String,
+                required: true
+            },
+            fileSize: {
+                type: Number,
+                required: true
+            }
+        }
+    ],
     createdAt: {
         type: Date,
         default: Date.now

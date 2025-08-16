@@ -1,7 +1,37 @@
 // backend/controllers/taskController.js
+const mongoose = require('mongoose');
+const multer = require('multer');
 const Task = require('../models/Task');
 const Project = require('../models/Project'); // To ensure project exists
 const User = require('../models/User'); // For populating assignee
+
+// -------------------- Multer Setup --------------------
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, 'uploads/'); // Files stored in /uploads directory
+    },
+    filename: (req, file, cb) => {
+        cb(null, `${Date.now()}-${file.originalname}`);
+    }
+});
+
+const fileFilter = (req, file, cb) => {
+    // Accept only PDFs for now (you can expand if needed)
+    if (file.mimetype === 'application/pdf') {
+        cb(null, true);
+    } else {
+        cb(new Error('Only PDF files are allowed!'), false);
+    }
+};
+
+const upload = multer({
+    storage,
+    fileFilter,
+    limits: { fileSize: 1024 * 1024 * 5 } // 5MB max
+});
+
+
+// -------------------- Controllers --------------------
 
 // @desc    Create a new task within a project
 // @route   POST /api/projects/:projectId/tasks
@@ -17,29 +47,40 @@ const createTask = async (req, res) => {
             return res.status(400).json({ message: 'Task title is required.' });
         }
 
-        // 2. Check if the project exists and user is part of it (basic check)
+        // 2. Check if the project exists
         const project = await Project.findById(projectId);
         if (!project) {
             return res.status(404).json({ message: 'Project not found.' });
         }
-        // For medium level, we don't strictly check if current user is member
-        // In a real app, you'd check `project.members.includes(currentUserId)`
 
-        // 3. Create the task
+        // 3. Prepare attachments if files were uploaded
+        let attachments = [];
+        if (req.files && req.files.length > 0) {
+            attachments = req.files.map(file => ({
+                fileName: file.originalname,
+                filePath: file.path,
+                fileType: file.mimetype,
+                fileSize: file.size
+            }));
+        }
+
+        // 4. Create the task
         const task = new Task({
             title,
             description,
             status,
             priority,
             dueDate,
-            project: projectId, // Link to the project
-            assignee // Assignee can be null/undefined initially
+            project: projectId,
+            assignee,
+            attachments
         });
 
         const createdTask = await task.save();
 
         // Populate assignee details if available
-        const populatedTask = await Task.findById(createdTask._id).populate('assignee', 'name email');
+        const populatedTask = await Task.findById(createdTask._id)
+            .populate('assignee', 'name email');
 
         res.status(201).json(populatedTask);
     } catch (error) {
@@ -48,23 +89,22 @@ const createTask = async (req, res) => {
     }
 };
 
+
 // @desc    Get all tasks for a specific project
 // @route   GET /api/projects/:projectId/tasks
-// @access  Private (Authenticated Users)
+// @access  Private
 const getTasksByProject = async (req, res) => {
     const { projectId } = req.params;
 
     try {
-        // Check if the project exists
         const project = await Project.findById(projectId);
         if (!project) {
             return res.status(404).json({ message: 'Project not found.' });
         }
 
-        // Fetch tasks for that project and populate assignee details
         const tasks = await Task.find({ project: projectId })
-            .populate('assignee', 'name email') // Populate assignee's name and email
-            .sort({ createdAt: -1 }); // Sort by newest first
+            .populate('assignee', 'name email')
+            .sort({ createdAt: -1 });
 
         res.status(200).json(tasks);
     } catch (error) {
@@ -73,20 +113,20 @@ const getTasksByProject = async (req, res) => {
     }
 };
 
+
 // @desc    Get a single task by ID
 // @route   GET /api/tasks/:id
-// @access  Private (Authenticated Users)
+// @access  Private
 const getTaskById = async (req, res) => {
     try {
         const task = await Task.findById(req.params.id)
-            .populate('project', 'name') // Populate project name
-            .populate('assignee', 'name email'); // Populate assignee name and email
+            .populate('project', 'name')
+            .populate('assignee', 'name email');
 
         if (!task) {
             return res.status(404).json({ message: 'Task not found.' });
         }
 
-        // In a real app, you might check if the user has access to this task's project
         res.status(200).json(task);
     } catch (error) {
         console.error('Error fetching task by ID:', error);
@@ -94,9 +134,30 @@ const getTaskById = async (req, res) => {
     }
 };
 
+
+// @desc    Get task status stats for a project
+// @route   GET /api/projects/:projectId/tasks/stats
+// @access  Private
+const getTaskStatusStats = async (req, res) => {
+    const { projectId } = req.params;
+
+    try {
+        const stats = await Task.aggregate([
+            { $match: { project: new mongoose.Types.ObjectId(projectId) } },
+            { $group: { _id: '$status', count: { $sum: 1 } } }
+        ]);
+
+        res.status(200).json(stats);
+    } catch (error) {
+        console.error('Error fetching task stats:', error);
+        res.status(500).json({ message: 'Server error while fetching task statistics.' });
+    }
+};
+
+
 // @desc    Update a task
 // @route   PUT /api/tasks/:id
-// @access  Private (Authenticated Users)
+// @access  Private
 const updateTask = async (req, res) => {
     const { title, description, status, priority, dueDate, assignee } = req.body;
 
@@ -107,23 +168,29 @@ const updateTask = async (req, res) => {
             return res.status(404).json({ message: 'Task not found.' });
         }
 
-        // Basic authorization: Only the assignee, project manager, or admin can update for robust app
-        // For medium level, any authenticated user can attempt update, more detailed check can be added
-        // e.g., if (task.assignee.toString() !== req.user.id && req.user.role !== 'project_manager' && req.user.role !== 'admin') { ... }
-
         task.title = title || task.title;
         task.description = description || task.description;
         task.status = status || task.status;
         task.priority = priority || task.priority;
-        task.dueDate = dueDate; // Allow explicit setting to null/undefined
-        task.assignee = assignee; // Allow explicit setting to null/undefined
+        task.dueDate = dueDate;
+        task.assignee = assignee;
+
+        // Handle new attachments if uploaded
+        if (req.files && req.files.length > 0) {
+            const newAttachments = req.files.map(file => ({
+                fileName: file.originalname,
+                filePath: file.path,
+                fileType: file.mimetype,
+                fileSize: file.size
+            }));
+            task.attachments.push(...newAttachments);
+        }
 
         const updatedTask = await task.save();
 
-        // Re-populate for response
         const populatedUpdatedTask = await Task.findById(updatedTask._id)
-                                            .populate('assignee', 'name email')
-                                            .populate('project', 'name');
+            .populate('assignee', 'name email')
+            .populate('project', 'name');
 
         res.status(200).json(populatedUpdatedTask);
     } catch (error) {
@@ -131,6 +198,7 @@ const updateTask = async (req, res) => {
         res.status(500).json({ message: 'Server error while updating task.' });
     }
 };
+
 
 // @desc    Delete a task
 // @route   DELETE /api/tasks/:id
@@ -143,8 +211,6 @@ const deleteTask = async (req, res) => {
             return res.status(404).json({ message: 'Task not found.' });
         }
 
-        // Basic authorization: Only Project Manager or Admin can delete
-        // (Middleware also enforces this, but a check here adds clarity)
         if (req.user.role !== 'project_manager' && req.user.role !== 'admin') {
             return res.status(403).json({ message: 'Not authorized to delete this task.' });
         }
@@ -157,10 +223,13 @@ const deleteTask = async (req, res) => {
     }
 };
 
+
 module.exports = {
+    upload, // export multer middleware
     createTask,
     getTasksByProject,
     getTaskById,
     updateTask,
-    deleteTask
+    deleteTask,
+   // getTaskStatusStats
 };
