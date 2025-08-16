@@ -2,7 +2,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 
-// Base URL for your backend API
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const TaskForm = ({ projectId, onTaskCreated, users }) => {
@@ -35,7 +34,6 @@ const TaskForm = ({ projectId, onTaskCreated, users }) => {
                 return;
             }
 
-            // CRITICAL FIX: The API call now correctly includes the '/api' prefix.
             const response = await axios.post(`${API_BASE_URL}/api/tasks/projects/${projectId}/tasks`, {
                 title,
                 description,
