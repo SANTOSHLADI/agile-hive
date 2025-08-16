@@ -231,5 +231,5 @@ module.exports = {
     getTaskById,
     updateTask,
     deleteTask,
-   // getTaskStatusStats
+    getTaskStatusStats
 };
